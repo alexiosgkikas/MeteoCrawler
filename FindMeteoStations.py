@@ -84,9 +84,9 @@ class FindMeteoStations:
 
 
         
-sta = FindMeteoStations()
-s=sta.findStations()
-sta.createCSV(s)
+#sta = FindMeteoStations()
+#s=sta.findStations()
+#sta.createCSV(s)
 
 
         
