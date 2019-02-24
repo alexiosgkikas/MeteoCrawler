@@ -8,6 +8,7 @@ Using Python 3
 - Fake agent https://pypi.org/project/fake-useragent/
 
 ### Supports:
+- Retrieve list of Meteo stations list, with working status of each.
 - Reading csv with urls or user define stations.
 - Use proxies retrieve from site: https://www.sslproxies.org/ and set rotation 
 - Each station writes in seperate csv ('station_name.csv').
