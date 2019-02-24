@@ -11,6 +11,7 @@ import os
 import sys
 import schedule 
 
+import Proxies as prox
 
 class Crawling:
     # list of weather stations
@@ -31,10 +32,10 @@ class Crawling:
     """
         Constructor 
     """    
-    def __init__(self,folder,interval):
+    def __init__(self,folder,interval,num_prox = 3):
         self.folder=folder
         self.interval=interval
-        
+        self.num_prox = num_prox
         if not os.path.exists(self.folder):
             print('Folder '+self.folder+' does not exist, creating now.')
             os.makedirs(self.folder)
@@ -53,10 +54,33 @@ class Crawling:
             input_file = csv.DictReader(csvfile, delimiter=';', quotechar='|')
             for row in input_file:
                 if row['DAVIS'] == 'True':
-                   #print(row['URL'])
-                   stations.append(row['URL'])
+                    print(row['URL'])
+                    stations.append(row['URL'])
         return stations
-    
+
+    def load_stations_v2(self, filename):
+        stations = []
+        import csv
+        with open(filename, newline='') as csvfile:
+            input_file = csv.reader(csvfile, delimiter=';', quotechar='|')
+            for row in input_file:
+                #print(row[1])
+                stations.append(row[1])
+        return stations
+	
+    """
+        Function append file
+    """
+    def writeLogFile(self, date,count):
+        filename = 'logs.txt'
+        
+        if not os.path.isfile(filename):
+               file = open(filename, 'w')
+               file.close()
+               
+        with open(filename, "a") as myfile:
+            myfile.write('Crawling date: '+ date +' . Stations good: '+ str(count) + '/'+ str(len(self.stations_url))+'\n')
+        
     """
         Function Create SCV File with Headers
     """
@@ -120,26 +144,40 @@ class Crawling:
     
     """
     def crawl_job(self):
-        
+        count =0;
         now = datetime.now()
         current_time = now.strftime("%H:%M %d-%m-%Y")
         print('\n====== Starting Crawling at : '+ str(current_time)+' ==============================\n')
-       
+            
+        count_prox = 1
+        
+        if  self.num_prox >0:
+            proxy = prox.Proxies(number_of_proxies=1).getProxiesAllInOne()[0]
+            
         for url in self.stations_url:
             # Get name 
             name =  url.split('stations')[-1].replace('/','')
+            # Get Proxy { ip: xxxx , port: xxxxx}
+            if self.num_prox >0 and count_prox % self.num_prox == 0:
+                print("Searching for new proxy")
+                proxy = prox.Proxies(number_of_proxies=1).getProxiesAllInOne()[0]
+            
+            count_prox+=1    
             # create Instance for crawl
-            cs = cS.Crawl_Station(url)
+            cs = cS.Crawl_Station(url,proxy=proxy)
             # Get Data
             data=cs.getInfo()
+            if len(data) >= 6:
+                count+=1
             #print(data)
             data['TimeCrawled'] = now.strftime("%H:%M")
             self.writeCSV(name,data)
-            time.sleep(5)
+            #time.sleep(5)
                 
         now = datetime.now()
         current_time = now.strftime("%H:%M %d-%m-%Y")
         print('\n====== Crawling Ended at '+ current_time +' ==============================\n')    
+        self.writeLogFile(current_time,count)
         #self.createBackup()
         
         
@@ -155,17 +193,20 @@ class Crawling:
 
 if __name__ == "__main__":
     
-    FOLDER = '/home/islab/weatherdata'
-    INTERVAL = ':52'
+    #FOLDER = '/home/islab/weatherdata'
+    FOLDER = 'RetrievedData'  # Folder to store csv files
+    INTERVAL = ':52'          # Every Hour at xx:01 start crawling 
+    STATIONS = 'stations_selection.csv' #CSV with stations url
+    CHANGE_PROXY = 3;         # Number of crawled stations until rotate proxy. Set by default to 3
     #Create object of crawl
-    c = Crawling(FOLDER,INTERVAL)
+    c = Crawling(FOLDER,INTERVAL,CHANGE_PROXY)
     # Load stations url from csv with davis stations
-    stations=c.load_stations('stations_status.csv')[1:30]
-    
+    #stations = c.load_stations(STATIONS) #Read Stations with dictionary header
+    stations = c.load_stations_v2(STATIONS)#Read stations without headers
+    #print('Number of loaded stations: '+str(len(stations))
     # Set stations to crawler
     c.setStations(stations)
-        
-    print('Starting script with parameters: '+'\n Folder: '+FOLDER+'\n INTERVAL: every hour at .'+INTERVAL)
+    print('Starting script with parameters: '+'\n Folder: '+FOLDER+'\n INTERVAL: every hour at .'+INTERVAL+'\n')
     
     # Create csv for each station
     for s in c.stations_url:
@@ -174,5 +215,3 @@ if __name__ == "__main__":
         
     # Start schedule
     c.sched_local()
-
-

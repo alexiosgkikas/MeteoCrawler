@@ -21,8 +21,10 @@ class Crawl_Station():
             url: string of url station to be crawled
             hold: array of fields we need to keep
     """
-    def __init__(self, url, hold=None):
+    def __init__(self, url,proxy=None, hold=None):
         self.URL=url
+        self.proxy = proxy
+        
         if hold is not None:
             self.hold=hold
     
@@ -45,13 +47,17 @@ class Crawl_Station():
     def getInfo(self):
         info={}
         # craete http 
-        http = urllib3.PoolManager()
+        if self.proxy:
+            proxy_url = 'http://'+self.proxy['ip'] + ':' + self.proxy['port']+'/'
+            http = urllib3.ProxyManager(proxy_url)
+        else:
+            http = urllib3.PoolManager()
         # do request
         try:
             request = http.request('GET', self.URL)
             #print(request.geturl())
             assert request.status == 200
-            print('Connection estabilshed in station : ' + self.URL)
+            print('Connection estabilshed in station : ' + self.URL+ 'with proxy: '+proxy_url)
         except:
             import warnings
             warnings.warn('Connection couldnt estabilshed in station: '+self.URL,Warning)
@@ -91,7 +97,7 @@ class Crawl_Station():
                         value=strong[1].find('font')
                         value= list(value.stripped_strings)
                         value = ' '.join(value)
-                        print(str(var) +" : " +value)
+                        #print(str(var) +" : " +value)
                         info[str(var)]=value
             return(info)
         
@@ -104,4 +110,8 @@ class Crawl_Station():
 #href="http://www.meteo.gr/stations/sfakia"
 #url = 'http://www.meteo.gr/stations/sfakia'
 #c = Crawl_Station(url)
-#print(c.getInfo())
+#d = c.getInfo()
+#count = 0
+#if 'Temperatur222' in d:
+#    count+=1
+#print(count)
